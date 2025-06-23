@@ -199,19 +199,9 @@ public class YourPage extends BasePage {
 }
 ```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
-
 ## 📞 Support
 
-- 📧 **Email**: your-email@company.com
-- 📋 **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- 📖 **Documentation**: [Wiki](https://github.com/your-repo/wiki)
+- 📧 **Email**: eyupcanbilgin01@gmail.com
 
 ---
 
