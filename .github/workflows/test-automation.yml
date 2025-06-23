@@ -1,189 +1,199 @@
-name: 🚀 Insider Test Automation CI/CD
+name: 🚀 Test Automation Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, master, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master, develop ]
   schedule:
-    # Run tests daily at 2 AM UTC
+    # Daily runs at 2 AM UTC
     - cron: '0 2 * * *'
   workflow_dispatch:
-    # Allow manual trigger
     inputs:
+      test_environment:
+        description: 'Test Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
       browser:
-        description: 'Browser to run tests'
-        required: false
+        description: 'Browser for Testing'
+        required: true
         default: 'chrome'
         type: choice
         options:
           - chrome
           - firefox
           - edge
+      test_suite:
+        description: 'Test Suite to Run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - regression
+          - all
 
 env:
   JAVA_VERSION: '17'
-  MAVEN_OPTS: '-Xmx1024m'
+  MAVEN_OPTS: '-Xmx2048m -XX:MaxPermSize=512m'
+  ALLURE_VERSION: '2.24.0'
 
 jobs:
-  # Job 1: Code Quality & Compilation
+  # ===============================
+  # 🔍 Code Quality Check
+  # ===============================
   code-quality:
-    name: 🔍 Code Quality Check
+    name: 🔍 Code Quality Analysis
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Checkout Code
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: ☕ Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
 
       - name: 📦 Cache Maven Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       - name: 🔨 Compile Project
-        run: mvn clean compile
+        run: mvn clean compile -DskipTests
 
-      - name: 🧪 Run Unit Tests (if any)
-        run: mvn test -Dtest=*UnitTest* || true
+      - name: ✅ Run Static Analysis
+        run: mvn checkstyle:check || true
 
-  # Job 2: E2E Tests with Chrome
-  e2e-tests-chrome:
-    name: 🧪 E2E Tests (Chrome)
+  # ===============================
+  # 🧪 E2E Tests Matrix
+  # ===============================
+  e2e-tests:
+    name: 🧪 E2E Tests
     runs-on: ubuntu-latest
     needs: code-quality
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+        include:
+          - browser: chrome
+            driver_options: "--headless --no-sandbox --disable-dev-shm-usage --disable-gpu"
+          - browser: firefox
+            driver_options: "--headless"
+
     steps:
-      - name: 📥 Checkout Code
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
       - name: ☕ Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: 'temurin'
 
       - name: 📦 Cache Maven Dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
-      - name: 🐳 Start Selenium Grid
+      - name: 🔧 Install System Dependencies
         run: |
-          docker-compose up -d selenium-hub chrome-node
-          sleep 30
-          curl -sSL http://localhost:4444/wd/hub/status
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xvfb
 
-      - name: 🧪 Run E2E Tests
+      - name: 🌐 Setup Chrome
+        if: matrix.browser == 'chrome'
+        uses: browser-actions/setup-chrome@latest
+
+      - name: 🦊 Setup Firefox
+        if: matrix.browser == 'firefox'
+        uses: browser-actions/setup-firefox@latest
+
+      - name: 📋 Display Environment Info
         run: |
-          mvn clean test -Dtest=InsiderCareerFlowTest \
-            -Dbrowser=chrome \
+          echo "🔧 Java Version: $(java -version)"
+          echo "📦 Maven Version: $(mvn -version)"
+          echo "🌐 Browser: ${{ matrix.browser }}"
+          echo "⚙️ Driver Options: ${{ matrix.driver_options }}"
+
+      - name: 🧪 Run Tests
+        run: |
+          mvn clean test \
+            -Dbrowser=${{ matrix.browser }} \
             -Dheadless=true \
-            -Denvironment=docker \
-            -Dselenium.hub.url=http://localhost:4444/wd/hub
+            -Dtest.environment=${{ github.event.inputs.test_environment || 'staging' }} \
+            -Dtest.suite=${{ github.event.inputs.test_suite || 'smoke' }}
+        env:
+          DISPLAY: :99
 
       - name: 📊 Generate Allure Report
         if: always()
         run: |
           mvn allure:report
-          
-      - name: 📂 Upload Allure Results
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: allure-results-chrome
-          path: |
-            target/allure-results/
-            target/site/allure-maven-plugin/
-          retention-days: 30
+          echo "📈 Allure report generated at: target/site/allure-maven-plugin"
 
-      - name: 📸 Upload Screenshots
+      - name: 📸 Capture Screenshots on Failure
         if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: screenshots-chrome
-          path: target/screenshots/
-          retention-days: 7
-
-      - name: 🧹 Cleanup
-        if: always()
-        run: docker-compose down -v
-
-  # Job 3: E2E Tests with Firefox (Optional)
-  e2e-tests-firefox:
-    name: 🧪 E2E Tests (Firefox)
-    runs-on: ubuntu-latest
-    needs: code-quality
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: ☕ Setup Java
-        uses: actions/setup-java@v3
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-
-      - name: 📦 Cache Maven Dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: 🐳 Start Selenium Grid
         run: |
-          docker-compose up -d selenium-hub firefox-node
-          sleep 30
+          mkdir -p screenshots
+          find . -name "*.png" -path "*/test-output/*" -exec cp {} screenshots/ \; || true
+          ls -la screenshots/ || echo "No screenshots found"
 
-      - name: 🧪 Run E2E Tests
-        run: |
-          mvn clean test -Dtest=InsiderCareerFlowTest \
-            -Dbrowser=firefox \
-            -Dheadless=true \
-            -Denvironment=docker
-
-      - name: 📂 Upload Allure Results
+      - name: 📤 Upload Test Results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: allure-results-firefox
-          path: target/allure-results/
+          name: test-results-${{ matrix.browser }}
+          path: |
+            target/surefire-reports/
+            allure-results/
+            target/site/allure-maven-plugin/
+            screenshots/
           retention-days: 30
 
-      - name: 🧹 Cleanup
+      - name: 📤 Upload Allure Results
         if: always()
-        run: docker-compose down -v
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.browser }}
+          path: allure-results/
+          retention-days: 30
 
-  # Job 4: Allure Report Publishing
+  # ===============================
+  # 📊 Allure Report Publishing
+  # ===============================
   publish-report:
     name: 📊 Publish Allure Report
     runs-on: ubuntu-latest
-    needs: [e2e-tests-chrome]
+    needs: e2e-tests
     if: always()
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    
     steps:
-      - name: 📥 Checkout Code
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 📂 Download Allure Results
-        uses: actions/download-artifact@v3
+      - name: 📥 Download All Artifacts
+        uses: actions/download-artifact@v4
         with:
-          name: allure-results-chrome
-          path: ./allure-results
+          pattern: allure-results-*
+          merge-multiple: true
+          path: allure-results/
 
-      - name: 📊 Generate Allure Report
+      - name: 📊 Generate Combined Allure Report
         uses: simple-elf/allure-report-action@master
         if: always()
         with:
@@ -193,28 +203,108 @@ jobs:
           allure_history: allure-history
 
       - name: 🚀 Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
         if: always()
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: allure-history
           destination_dir: allure-report
 
-  # Job 5: Notification
-  notify:
-    name: 📢 Send Notifications
-    runs-on: ubuntu-latest
-    needs: [e2e-tests-chrome, publish-report]
-    if: always()
-    steps:
-      - name: 📧 Send Success Notification
-        if: needs.e2e-tests-chrome.result == 'success'
-        run: |
-          echo "✅ Tests passed successfully!"
-          echo "📊 Allure Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report"
+      - name: 📝 Add Report Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reportUrl = `https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `📊 **Allure Test Report**: [View Report](${reportUrl})`
+            });
 
-      - name: 📧 Send Failure Notification
-        if: needs.e2e-tests-chrome.result == 'failure'
+  # ===============================
+  # 🐳 Docker Integration Test
+  # ===============================
+  docker-test:
+    name: 🐳 Docker Integration Test
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔧 Install Docker Compose
         run: |
-          echo "❌ Tests failed!"
-          echo "🔍 Check the workflow logs and artifacts for details" 
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
+      - name: 🚀 Run Tests in Docker
+        run: |
+          chmod +x run-tests-docker.sh
+          ./run-tests-docker.sh
+        timeout-minutes: 15
+
+      - name: 📤 Upload Docker Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-test-results
+          path: |
+            allure-results/
+            target/surefire-reports/
+          retention-days: 30
+
+      - name: 🧹 Cleanup Docker
+        if: always()
+        run: |
+          docker-compose down -v --remove-orphans || true
+          docker system prune -f || true
+
+  # ===============================
+  # 📬 Notification
+  # ===============================
+  notify:
+    name: 📬 Send Notifications
+    runs-on: ubuntu-latest
+    needs: [e2e-tests, publish-report, docker-test]
+    if: always()
+    
+    steps:
+      - name: 📊 Evaluate Test Results
+        id: results
+        run: |
+          E2E_STATUS="${{ needs.e2e-tests.result }}"
+          DOCKER_STATUS="${{ needs.docker-test.result }}"
+          PUBLISH_STATUS="${{ needs.publish-report.result }}"
+          
+          if [[ "$E2E_STATUS" == "success" && "$DOCKER_STATUS" == "success" ]]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=✅ All tests passed successfully!" >> $GITHUB_OUTPUT
+          elif [[ "$E2E_STATUS" == "failure" || "$DOCKER_STATUS" == "failure" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=❌ Some tests failed. Check the reports for details." >> $GITHUB_OUTPUT
+          else
+            echo "status=warning" >> $GITHUB_OUTPUT
+            echo "message=⚠️ Tests completed with warnings." >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📬 Create Summary
+        if: always()
+        run: |
+          echo "## 🧪 Test Automation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| E2E Tests | ${{ needs.e2e-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Tests | ${{ needs.docker-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Report Publishing | ${{ needs.publish-report.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Message**: ${{ steps.results.outputs.message }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Live Report**: [View Allure Report](https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report)" >> $GITHUB_STEP_SUMMARY 

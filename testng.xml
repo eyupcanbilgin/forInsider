@@ -1,51 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 
-<suite name="Insider Test Automation Suite" verbose="1" parallel="methods" thread-count="1">
+<suite name="Insider Test Automation Suite" parallel="false" verbose="2">
     
-    <!-- Global Parameters -->
+    <!-- Global Test Parameters -->
     <parameter name="browser" value="chrome"/>
     <parameter name="headless" value="false"/>
+    <parameter name="environment" value="local"/>
     
-    <!-- Test Configuration -->
-    <test name="Insider Career Flow Tests" preserve-order="true">
-        
-        <!-- Test Classes -->
-        <classes>
-            <class name="tests.InsiderCareerFlowTest">
-                <methods>
-                    <include name="testInsiderCareerJourney"/>
-                </methods>
-            </class>
-        </classes>
-        
-    </test>
+    <!-- Test Groups Definition -->
+    <groups>
+        <define name="smoke">
+            <include name="critical"/>
+            <include name="sanity"/>
+        </define>
+        <define name="regression">
+            <include name="smoke"/>
+            <include name="extended"/>
+        </define>
+    </groups>
     
-    <!-- Smoke Test Suite -->
-    <test name="Smoke Tests" preserve-order="true" enabled="false">
-        <classes>
-            <class name="tests.InsiderCareerFlowTest">
-                <methods>
-                    <include name="testInsiderCareerJourney"/>
-                </methods>
-            </class>
-        </classes>
-    </test>
-    
-    <!-- Regression Test Suite -->
-    <test name="Regression Tests" preserve-order="true" enabled="false">
-        <classes>
-            <class name="tests.InsiderCareerFlowTest">
-                <methods>
-                    <include name="testInsiderCareerJourney"/>
-                </methods>
-            </class>
-        </classes>
-    </test>
-
-    <!-- Listeners for Enhanced Reporting -->
+    <!-- Listeners for Allure Integration -->
     <listeners>
         <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
     </listeners>
-
+    
+    <!-- Main Test Suite -->
+    <test name="Insider Career Flow Tests" preserve-order="true">
+        <parameter name="testDescription" value="End-to-End Career Journey Tests"/>
+        
+        <groups>
+            <run>
+                <include name="smoke"/>
+                <include name="critical"/>
+            </run>
+        </groups>
+        
+        <classes>
+            <!-- Main E2E Test Class -->
+            <class name="tests.InsiderCareerFlowTest">
+                <methods>
+                    <include name="testInsiderCareerJourney"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+    
+    <!-- Extended Test Suite (Optional) -->
+    <test name="Extended Regression Tests" enabled="false">
+        <parameter name="testDescription" value="Extended test scenarios"/>
+        
+        <groups>
+            <run>
+                <include name="regression"/>
+            </run>
+        </groups>
+        
+        <classes>
+            <class name="tests.InsiderCareerFlowTest"/>
+        </classes>
+    </test>
+    
 </suite> 
