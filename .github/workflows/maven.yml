@@ -1,51 +1,30 @@
 name: Selenium Test Automation
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
+  push:
+    branches:
+      - master
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      selenium:
-        image: selenium/standalone-chrome:latest
-        ports:
-          - 4444:4444
-        options: >-
-          --shm-size=2g
-
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up JDK 11
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           java-version: '11'
           distribution: 'adopt'
 
-      - name: Cache Maven packages
-        uses: actions/cache@v3
+      - name: Run tests
+        run: mvn clean test
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
         with:
-          path: |
-            ~/.m2/repository
-            !~/.m2/repository/org/apache/maven/plugins/maven-surefire-plugin
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-maven
-
-      - name: Run Tests
-        run: mvn clean test -Dwebdriver.remote.url=http://localhost:4444/wd/hub
-
-      - name: Generate Allure Report
-        run: mvn allure:report
-
-      - name: Upload Allure Report as artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: allure-report
-          path: target/site/allure-maven-plugin
+          name: test-reports
+          path: target/surefire-reports
