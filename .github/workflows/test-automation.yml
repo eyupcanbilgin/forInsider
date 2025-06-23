@@ -156,18 +156,13 @@ jobs:
           echo "Display: $DISPLAY"
           ps aux | grep Xvfb || echo "Xvfb not running"
           
-          # Try simple test first, fallback to main test
-          mvn clean test \
-            -Dtest=SimpleTest \
-            -Dbrowser=${{ matrix.browser }} \
-            -Dheadless=true \
-            -Dtest.environment=${{ github.event.inputs.test_environment || 'staging' }} \
-            -Dmaven.test.failure.ignore=true || \
+          # Run main E2E tests
           mvn clean test \
             -Dtest=InsiderCareerFlowTest \
             -Dbrowser=${{ matrix.browser }} \
             -Dheadless=true \
             -Dwebdriver.chrome.args="--no-sandbox,--disable-dev-shm-usage,--disable-gpu,--remote-debugging-port=9222" \
+            -Dtest.environment=${{ github.event.inputs.test_environment || 'staging' }} \
             -Dmaven.test.failure.ignore=true
         env:
           DISPLAY: :99

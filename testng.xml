@@ -8,13 +8,6 @@
         <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
     </listeners>
     
-    <!-- Simple Test Suite for CI/CD -->
-    <test name="Pipeline Validation Tests">
-        <classes>
-            <class name="tests.SimpleTest"/>
-        </classes>
-    </test>
-    
     <!-- Main E2E Test Suite -->
     <test name="Insider Career Flow Tests" enabled="true">
         <classes>
