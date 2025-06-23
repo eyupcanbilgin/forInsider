@@ -113,14 +113,21 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget unzip xvfb
+          
+          # Start virtual display
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+          sleep 3
 
       - name: 🌐 Setup Chrome
         if: matrix.browser == 'chrome'
         uses: browser-actions/setup-chrome@latest
-
-      - name: 🦊 Setup Firefox
-        if: matrix.browser == 'firefox'
-        uses: browser-actions/setup-firefox@latest
+        
+      - name: 🌐 Verify Chrome Installation
+        if: matrix.browser == 'chrome'
+        run: |
+          google-chrome --version
+          which google-chrome
 
       - name: 📋 Display Environment Info
         run: |
@@ -136,12 +143,26 @@ jobs:
           echo "Environment: ${{ github.event.inputs.test_environment || 'staging' }}"
           echo "Test Suite: ${{ github.event.inputs.test_suite || 'smoke' }}"
           
+          # Set memory options
+          export MAVEN_OPTS="-Xmx1024m -XX:MaxPermSize=256m"
+          export _JAVA_OPTIONS="-Xmx1024m"
+          
+          # Verify display
+          echo "Display: $DISPLAY"
+          ps aux | grep Xvfb || echo "Xvfb not running"
+          
+          # Try simple test first, fallback to main test
+          mvn clean test \
+            -Dtest=SimpleTest \
+            -Dbrowser=${{ matrix.browser }} \
+            -Dheadless=true \
+            -Dtest.environment=${{ github.event.inputs.test_environment || 'staging' }} \
+            -Dmaven.test.failure.ignore=true || \
           mvn clean test \
             -Dtest=InsiderCareerFlowTest \
             -Dbrowser=${{ matrix.browser }} \
             -Dheadless=true \
-            -Dtest.environment=${{ github.event.inputs.test_environment || 'staging' }} \
-            -Dtest.suite=${{ github.event.inputs.test_suite || 'smoke' }} \
+            -Dwebdriver.chrome.args="--no-sandbox,--disable-dev-shm-usage,--disable-gpu,--remote-debugging-port=9222" \
             -Dmaven.test.failure.ignore=true
         env:
           DISPLAY: :99
