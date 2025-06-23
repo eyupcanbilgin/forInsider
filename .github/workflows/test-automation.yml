@@ -39,7 +39,7 @@ on:
 
 env:
   JAVA_VERSION: '17'
-  MAVEN_OPTS: '-Xmx2048m -XX:MaxPermSize=512m'
+  MAVEN_OPTS: '-Xms256m -Xmx512m -XX:MetaspaceSize=128m'
   ALLURE_VERSION: '2.24.0'
 
 jobs:
@@ -143,9 +143,14 @@ jobs:
           echo "Environment: ${{ github.event.inputs.test_environment || 'staging' }}"
           echo "Test Suite: ${{ github.event.inputs.test_suite || 'smoke' }}"
           
-          # Set memory options
-          export MAVEN_OPTS="-Xmx1024m -XX:MaxPermSize=256m"
-          export _JAVA_OPTIONS="-Xmx1024m"
+          # Set conservative memory options for GitHub Actions
+          export MAVEN_OPTS="-Xms128m -Xmx256m -XX:MetaspaceSize=64m -XX:MaxMetaspaceSize=128m"
+          export _JAVA_OPTIONS="-Xms64m -Xmx256m"
+          export JAVA_TOOL_OPTIONS="-Xmx256m"
+          
+          # Display memory info
+          echo "Available memory:"
+          free -h
           
           # Verify display
           echo "Display: $DISPLAY"

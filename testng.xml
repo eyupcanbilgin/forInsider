@@ -1,63 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 
-<suite name="Insider Test Automation Suite" parallel="false" verbose="2">
-    
-    <!-- Global Test Parameters -->
-    <parameter name="browser" value="chrome"/>
-    <parameter name="headless" value="false"/>
-    <parameter name="environment" value="local"/>
-    
-    <!-- Test Groups Definition -->
-    <groups>
-        <define name="smoke">
-            <include name="critical"/>
-            <include name="sanity"/>
-        </define>
-        <define name="regression">
-            <include name="smoke"/>
-            <include name="extended"/>
-        </define>
-    </groups>
+<suite name="Insider Test Automation Suite" parallel="false" verbose="1">
     
     <!-- Listeners for Allure Integration -->
     <listeners>
         <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
     </listeners>
     
-    <!-- Main Test Suite -->
-    <test name="Insider Career Flow Tests" preserve-order="true">
-        <parameter name="testDescription" value="End-to-End Career Journey Tests"/>
-        
-        <groups>
-            <run>
-                <include name="smoke"/>
-                <include name="critical"/>
-            </run>
-        </groups>
-        
+    <!-- Simple Test Suite for CI/CD -->
+    <test name="Pipeline Validation Tests">
         <classes>
-            <!-- Main E2E Test Class -->
+            <class name="tests.SimpleTest"/>
+        </classes>
+    </test>
+    
+    <!-- Main E2E Test Suite -->
+    <test name="Insider Career Flow Tests" enabled="true">
+        <classes>
             <class name="tests.InsiderCareerFlowTest">
                 <methods>
                     <include name="testInsiderCareerJourney"/>
                 </methods>
             </class>
-        </classes>
-    </test>
-    
-    <!-- Extended Test Suite (Optional) -->
-    <test name="Extended Regression Tests" enabled="false">
-        <parameter name="testDescription" value="Extended test scenarios"/>
-        
-        <groups>
-            <run>
-                <include name="regression"/>
-            </run>
-        </groups>
-        
-        <classes>
-            <class name="tests.InsiderCareerFlowTest"/>
         </classes>
     </test>
     
