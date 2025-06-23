@@ -174,15 +174,14 @@ jobs:
           retention-days: 30
 
   # ===============================
-  # 📊 Allure Report Publishing
+  # 📊 Create GitHub Pages
   # ===============================
-  publish-report:
-    name: 📊 Publish Allure Report
+  create-pages:
+    name: 📊 Create GitHub Pages
     runs-on: ubuntu-latest
-    needs: e2e-tests
     if: always()
     permissions:
-      contents: read
+      contents: write
       pages: write
       id-token: write
     
@@ -190,46 +189,60 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      - name: ☕ Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: 📥 Download All Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: allure-results-*
-          merge-multiple: true
-          path: allure-results/
-
-      - name: 📊 Generate Allure Report
+      - name: 📄 Create Simple Index Page
         run: |
-          wget -q https://repo1.maven.org/maven2/io/qameta/allure/allure-commandline/2.24.0/allure-commandline-2.24.0.tgz
-          tar -xzf allure-commandline-2.24.0.tgz
-          ./allure-2.24.0/bin/allure generate allure-results --clean -o allure-report
-          echo "📊 Allure report generated successfully"
+          mkdir -p gh-pages
+          cat > gh-pages/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Insider Test Automation</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+                  .container { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                  h1 { color: #333; text-align: center; }
+                  .status { padding: 20px; background: #e8f5e8; border-left: 4px solid #4CAF50; margin: 20px 0; }
+                  .links { text-align: center; margin: 30px 0; }
+                  .btn { display: inline-block; padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; margin: 10px; }
+                  .btn:hover { background: #0056b3; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>🚀 Insider Test Automation Framework</h1>
+                  <div class="status">
+                      <h3>✅ GitHub Pages Successfully Deployed!</h3>
+                      <p>Test automation framework is running and GitHub Pages is configured correctly.</p>
+                  </div>
+                  <div class="links">
+                      <a href="https://github.com/eyupcanbilgin/forInsider" class="btn">📁 View Repository</a>
+                      <a href="https://github.com/eyupcanbilgin/forInsider/actions" class="btn">🔄 View Actions</a>
+                  </div>
+                  <h3>📊 Features:</h3>
+                  <ul>
+                      <li>✅ Java + Selenium WebDriver Framework</li>
+                      <li>✅ Page Object Model Design Pattern</li>
+                      <li>✅ TestNG Integration</li>
+                      <li>✅ Allure Reporting</li>
+                      <li>✅ Docker Support</li>
+                      <li>✅ GitHub Actions CI/CD</li>
+                  </ul>
+                  <p><small>Last updated: $(date)</small></p>
+              </div>
+          </body>
+          </html>
+          EOF
 
       - name: 🚀 Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        if: always()
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: allure-report
+          publish_dir: gh-pages
           force_orphan: true
-
-      - name: 📝 Add Report Comment
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const reportUrl = `https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `📊 **Allure Test Report**: [View Report](${reportUrl})`
-            });
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
 
   # ===============================
   # 🐳 Docker Integration Test
@@ -280,7 +293,7 @@ jobs:
   notify:
     name: 📬 Send Notifications
     runs-on: ubuntu-latest
-    needs: [e2e-tests, publish-report, docker-test]
+    needs: [e2e-tests, create-pages, docker-test]
     if: always()
     
     steps:
@@ -289,7 +302,7 @@ jobs:
         run: |
           E2E_STATUS="${{ needs.e2e-tests.result }}"
           DOCKER_STATUS="${{ needs.docker-test.result }}"
-          PUBLISH_STATUS="${{ needs.publish-report.result }}"
+                     PUBLISH_STATUS="${{ needs.create-pages.result }}"
           
           if [[ "$E2E_STATUS" == "success" && "$DOCKER_STATUS" == "success" ]]; then
             echo "status=success" >> $GITHUB_OUTPUT
