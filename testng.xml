@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+
+<suite name="Insider Test Automation Suite" verbose="1" parallel="methods" thread-count="1">
+    
+    <!-- Global Parameters -->
+    <parameter name="browser" value="chrome"/>
+    <parameter name="headless" value="false"/>
+    
+    <!-- Test Configuration -->
+    <test name="Insider Career Flow Tests" preserve-order="true">
+        
+        <!-- Test Classes -->
+        <classes>
+            <class name="tests.InsiderCareerFlowTest">
+                <methods>
+                    <include name="testInsiderCareerJourney"/>
+                </methods>
+            </class>
+        </classes>
+        
+    </test>
+    
+    <!-- Smoke Test Suite -->
+    <test name="Smoke Tests" preserve-order="true" enabled="false">
+        <classes>
+            <class name="tests.InsiderCareerFlowTest">
+                <methods>
+                    <include name="testInsiderCareerJourney"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+    
+    <!-- Regression Test Suite -->
+    <test name="Regression Tests" preserve-order="true" enabled="false">
+        <classes>
+            <class name="tests.InsiderCareerFlowTest">
+                <methods>
+                    <include name="testInsiderCareerJourney"/>
+                </methods>
+            </class>
+        </classes>
+    </test>
+
+    <!-- Listeners for Enhanced Reporting -->
+    <listeners>
+        <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
+    </listeners>
+
+</suite> 

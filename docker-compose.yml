@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # Selenium Hub
+  selenium-hub:
+    image: selenium/hub:4.15.0-20231110
+    container_name: selenium-hub
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+    environment:
+      - GRID_MAX_SESSION=16
+      - GRID_BROWSER_TIMEOUT=300
+      - GRID_TIMEOUT=300
+    networks:
+      - selenium-grid
+
+  # Chrome Node
+  chrome-node:
+    image: selenium/node-chrome:4.15.0-20231110
+    container_name: chrome-node
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=2
+      - NODE_MAX_SESSION=2
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - selenium-grid
+
+  # Firefox Node
+  firefox-node:
+    image: selenium/node-firefox:4.15.0-20231110
+    container_name: firefox-node
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=2
+      - NODE_MAX_SESSION=2
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - selenium-grid
+
+  # Edge Node
+  edge-node:
+    image: selenium/node-edge:4.15.0-20231110
+    container_name: edge-node
+    shm_size: 2gb
+    depends_on:
+      - selenium-hub
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=2
+      - NODE_MAX_SESSION=2
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - selenium-grid
+
+  # Test Automation Framework
+  automation-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: automation-tests
+    depends_on:
+      - selenium-hub
+      - chrome-node
+      - firefox-node
+      - edge-node
+    environment:
+      - SELENIUM_HUB_URL=http://selenium-hub:4444/wd/hub
+      - BROWSER=chrome
+      - HEADLESS=true
+      - ENVIRONMENT=docker
+    volumes:
+      - ./target:/app/target
+      - ./allure-results:/app/allure-results
+    networks:
+      - selenium-grid
+    command: mvn test -Dtest=InsiderCareerFlowTest
+
+  # Allure Report Server
+  allure-report:
+    image: frankescobar/allure-docker-service:2.24.0
+    container_name: allure-report
+    ports:
+      - "5050:5050"
+      - "5252:5252"
+    environment:
+      CHECK_RESULTS_EVERY_SECONDS: 10
+      KEEP_HISTORY: 1
+      KEEP_HISTORY_LATEST: 25
+    volumes:
+      - ./allure-results:/app/allure-results
+      - ./target/allure-reports:/app/default-reports
+    networks:
+      - selenium-grid
+
+networks:
+  selenium-grid:
+    driver: bridge 

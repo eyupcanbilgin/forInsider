@@ -1,0 +1,220 @@
+name: 🚀 Insider Test Automation CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+    inputs:
+      browser:
+        description: 'Browser to run tests'
+        required: false
+        default: 'chrome'
+        type: choice
+        options:
+          - chrome
+          - firefox
+          - edge
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_OPTS: '-Xmx1024m'
+
+jobs:
+  # Job 1: Code Quality & Compilation
+  code-quality:
+    name: 🔍 Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: 📦 Cache Maven Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: 🔨 Compile Project
+        run: mvn clean compile
+
+      - name: 🧪 Run Unit Tests (if any)
+        run: mvn test -Dtest=*UnitTest* || true
+
+  # Job 2: E2E Tests with Chrome
+  e2e-tests-chrome:
+    name: 🧪 E2E Tests (Chrome)
+    runs-on: ubuntu-latest
+    needs: code-quality
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: 📦 Cache Maven Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: 🐳 Start Selenium Grid
+        run: |
+          docker-compose up -d selenium-hub chrome-node
+          sleep 30
+          curl -sSL http://localhost:4444/wd/hub/status
+
+      - name: 🧪 Run E2E Tests
+        run: |
+          mvn clean test -Dtest=InsiderCareerFlowTest \
+            -Dbrowser=chrome \
+            -Dheadless=true \
+            -Denvironment=docker \
+            -Dselenium.hub.url=http://localhost:4444/wd/hub
+
+      - name: 📊 Generate Allure Report
+        if: always()
+        run: |
+          mvn allure:report
+          
+      - name: 📂 Upload Allure Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-results-chrome
+          path: |
+            target/allure-results/
+            target/site/allure-maven-plugin/
+          retention-days: 30
+
+      - name: 📸 Upload Screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: screenshots-chrome
+          path: target/screenshots/
+          retention-days: 7
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: docker-compose down -v
+
+  # Job 3: E2E Tests with Firefox (Optional)
+  e2e-tests-firefox:
+    name: 🧪 E2E Tests (Firefox)
+    runs-on: ubuntu-latest
+    needs: code-quality
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: 📦 Cache Maven Dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: 🐳 Start Selenium Grid
+        run: |
+          docker-compose up -d selenium-hub firefox-node
+          sleep 30
+
+      - name: 🧪 Run E2E Tests
+        run: |
+          mvn clean test -Dtest=InsiderCareerFlowTest \
+            -Dbrowser=firefox \
+            -Dheadless=true \
+            -Denvironment=docker
+
+      - name: 📂 Upload Allure Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: allure-results-firefox
+          path: target/allure-results/
+          retention-days: 30
+
+      - name: 🧹 Cleanup
+        if: always()
+        run: docker-compose down -v
+
+  # Job 4: Allure Report Publishing
+  publish-report:
+    name: 📊 Publish Allure Report
+    runs-on: ubuntu-latest
+    needs: [e2e-tests-chrome]
+    if: always()
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 📂 Download Allure Results
+        uses: actions/download-artifact@v3
+        with:
+          name: allure-results-chrome
+          path: ./allure-results
+
+      - name: 📊 Generate Allure Report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          allure_results: allure-results
+          allure_report: allure-report
+          gh_pages: gh-pages
+          allure_history: allure-history
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: allure-history
+          destination_dir: allure-report
+
+  # Job 5: Notification
+  notify:
+    name: 📢 Send Notifications
+    runs-on: ubuntu-latest
+    needs: [e2e-tests-chrome, publish-report]
+    if: always()
+    steps:
+      - name: 📧 Send Success Notification
+        if: needs.e2e-tests-chrome.result == 'success'
+        run: |
+          echo "✅ Tests passed successfully!"
+          echo "📊 Allure Report: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/allure-report"
+
+      - name: 📧 Send Failure Notification
+        if: needs.e2e-tests-chrome.result == 'failure'
+        run: |
+          echo "❌ Tests failed!"
+          echo "🔍 Check the workflow logs and artifacts for details" 
