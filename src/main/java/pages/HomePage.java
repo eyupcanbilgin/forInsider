@@ -95,20 +95,7 @@ public class HomePage extends BasePage {
         Assert.assertTrue(getCurrentUrl().contains("useinsider.com"), "URL is incorrect!");
     }
     
-    @Step("Check company menu is accessible")
-    public void checkCompanyMenuAccessible() {
-        Assert.assertTrue(menuCompany.isDisplayed(), "Company menü görüntülenemedi!");
-        Assert.assertTrue(menuCompany.isEnabled(), "Company menü tıklanamıyor!");
-    }
+
     
-    @Override
-    public boolean isPageLoaded() {
-        try {
-            return logoInsider.isDisplayed() && 
-                   getPageTitle().toLowerCase().contains("insider") &&
-                   getCurrentUrl().contains("useinsider.com");
-        } catch (Exception e) {
-            return false;
-        }
-    }
+
 } 

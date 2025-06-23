@@ -97,22 +97,28 @@ public class QualityAssuranceJobsPage extends BasePage {
         
         // Click Istanbul option
         click(istanbulTurkiyeOption);
-        forceWait(1); // Wait for filter to apply
+        
+        // Wait longer for filter to apply and jobs to reload
+        forceWait(3); // Increased wait time for job list to update
+        LoggerUtil.info("Applied location filter - waiting for job list to update");
     }
     
 
     
     @Step("Click first View Role button")
     public void clickFirstViewRole() {
-        Assert.assertFalse(jobListings.isEmpty(), "No job listings found!");
+        // Fresh element lookup to avoid stale reference
+        List<WebElement> currentJobListings = jobListings;
+        Assert.assertFalse(currentJobListings.isEmpty(), "No job listings found!");
         
         // Get first job block and hover quickly
-        WebElement firstJobBlock = jobListings.get(0);
+        WebElement firstJobBlock = currentJobListings.get(0);
         hover(firstJobBlock);
         
-        // Quick click View Role button
-        Assert.assertFalse(viewRoleButtons.isEmpty(), "No View Role buttons found after hover!");
-        WebElement firstViewRoleButton = viewRoleButtons.get(0);
+        // Quick click View Role button with fresh lookup
+        List<WebElement> currentViewRoleButtons = viewRoleButtons;
+        Assert.assertFalse(currentViewRoleButtons.isEmpty(), "No View Role buttons found after hover!");
+        WebElement firstViewRoleButton = currentViewRoleButtons.get(0);
         fastClick(firstViewRoleButton);
     }
     
@@ -147,6 +153,7 @@ public class QualityAssuranceJobsPage extends BasePage {
         Assert.assertFalse(jobListings.isEmpty(), "Filtered job list is empty!");
         
         int jobCount = jobListings.size();
+        LoggerUtil.info("Found " + jobCount + " job listings after filtering");
         
         // Check only first 3 jobs for speed
         int jobsToCheck = Math.min(jobCount, 3);
@@ -156,19 +163,21 @@ public class QualityAssuranceJobsPage extends BasePage {
             String jobDepartment = jobDepartments.get(i).getText();
             String jobLocation = jobLocations.get(i).getText();
             
+            LoggerUtil.info("Job " + (i+1) + " - Title: '" + jobTitle + "', Department: '" + jobDepartment + "', Location: '" + jobLocation + "'");
+            
             // Quick validations
             Assert.assertTrue(
                 jobTitle.toLowerCase().contains("quality assurance") || 
                 jobTitle.toLowerCase().contains("qa") || 
                 jobTitle.toLowerCase().contains("test"),
-                "Job title is not QA related: " + jobTitle
+                "Job title is not QA related: '" + jobTitle + "'"
             );
             
             Assert.assertEquals(jobDepartment, "Quality Assurance",
-                "Department is not Quality Assurance: " + jobDepartment);
+                "Department is not Quality Assurance: '" + jobDepartment + "'");
             
             Assert.assertEquals(jobLocation, "Istanbul, Turkiye",
-                "Location is not Istanbul, Turkiye: " + jobLocation);
+                "Location is not Istanbul, Turkiye: '" + jobLocation + "'");
         }
     }
     
@@ -189,14 +198,5 @@ public class QualityAssuranceJobsPage extends BasePage {
                          "Page title does not contain expected job or company content: " + pageTitle);
     }
     
-    @Override
-    public boolean isPageLoaded() {
-        try {
-            String currentUrl = getCurrentUrl().toLowerCase();
-            return currentUrl.contains("open-positions") &&
-                   browseOpenPositionsTitle.isDisplayed();
-        } catch (Exception e) {
-            return false;
-        }
-    }
+
 }

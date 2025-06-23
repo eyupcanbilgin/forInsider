@@ -95,53 +95,7 @@ public class ConfigReader {
         return Boolean.parseBoolean(value);
     }
     
-    /**
-     * Get long property with default value
-     */
-    public static long getLongProperty(String key, long defaultValue) {
-        String value = getProperty(key, String.valueOf(defaultValue));
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            LoggerUtil.warn("Invalid long property: " + key + " = " + value + ", using default: " + defaultValue);
-            return defaultValue;
-        }
-    }
-    
-    /**
-     * Get double property with default value
-     */
-    public static double getDoubleProperty(String key, double defaultValue) {
-        String value = getProperty(key, String.valueOf(defaultValue));
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException e) {
-            LoggerUtil.warn("Invalid double property: " + key + " = " + value + ", using default: " + defaultValue);
-            return defaultValue;
-        }
-    }
-    
-    /**
-     * Check if property exists
-     */
-    public static boolean hasProperty(String key) {
-        return System.getProperty(key) != null || properties.containsKey(key);
-    }
-    
-    /**
-     * Get all properties (for debugging)
-     */
-    public static Properties getAllProperties() {
-        return (Properties) properties.clone();
-    }
-    
-    /**
-     * Reload properties from file
-     */
-    public static void reloadProperties() {
-        loadProperties();
-        LoggerUtil.info("Configuration properties reloaded");
-    }
+
     
     // Common configuration getters for convenience
     

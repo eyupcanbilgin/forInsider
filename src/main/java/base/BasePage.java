@@ -202,8 +202,24 @@ public abstract class BasePage {
                 return fieldName;
             }
             
-            // If field name not found, return simple name
-            return "unknown-element";
+            // Try to get element info from its attributes for better logging
+            String elementClass = element.getAttribute("class");
+            String elementId = element.getAttribute("id");
+            String elementTag = element.getTagName();
+            
+            if (elementClass != null && elementClass.contains("position-list-item")) {
+                return "jobListingItem";
+            } else if (elementClass != null && elementClass.contains("btn-navy")) {
+                return "viewRoleButton";
+            } else if (elementId != null && !elementId.isEmpty()) {
+                return "element-" + elementId;
+            } else if (elementClass != null && !elementClass.isEmpty()) {
+                // Use first class name for better identification
+                String firstClass = elementClass.split(" ")[0];
+                return "element-" + firstClass;
+            } else {
+                return elementTag + "-element";
+            }
         } catch (Exception e) {
             return "unknown-element";
         }
@@ -281,10 +297,7 @@ public abstract class BasePage {
         }
     }
     
-    /**
-     * Each page should implement this to verify page is loaded
-     */
-    public abstract boolean isPageLoaded();
+
 
     @Step("Navigate to URL: {url}")
     public void navigateToUrl(String url) {

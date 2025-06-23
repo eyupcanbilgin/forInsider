@@ -155,37 +155,10 @@ public abstract class BaseTest {
     }
     
     /**
-     * Wait for a specified time (use sparingly)
-     */
-    protected void waitFor(int seconds) {
-        try {
-            Thread.sleep(seconds * 1000L);
-            LoggerUtil.info("Waited for " + seconds + " seconds");
-        } catch (InterruptedException e) {
-            LoggerUtil.error("Wait interrupted", e);
-            Thread.currentThread().interrupt();
-        }
-    }
-    
-    /**
-     * Get current test method name
-     */
-    protected String getCurrentTestMethodName() {
-        return Thread.currentThread().getStackTrace()[2].getMethodName();
-    }
-    
-    /**
      * Log test step (for better readability)
      */
     protected void logTestStep(String stepDescription) {
         LoggerUtil.stepStart(stepDescription);
-    }
-    
-    /**
-     * Log test verification
-     */
-    protected void logTestVerification(String description, boolean result) {
-        LoggerUtil.verification(description, result);
     }
     
     /**

@@ -109,13 +109,5 @@ public class CareersPage extends BasePage {
         Assert.assertTrue(lifeAtInsiderFound, "Life at Insider block could not be found after scrolling!");
     }
     
-    @Override
-    public boolean isPageLoaded() {
-        try {
-            return getCurrentUrl().toLowerCase().contains("careers") &&
-                   headerReadyToDisrupt.isDisplayed();
-        } catch (Exception e) {
-            return false;
-        }
-    }
+
 } 
