@@ -13,6 +13,7 @@ import utils.ConfigReader;
 import utils.LoggerUtil;
 
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.time.Duration;
 import java.util.HashMap;
@@ -176,7 +177,7 @@ public class DriverFactory {
     private static WebDriver createRemoteDriver(String browser) {
         try {
             String hubUrl = ConfigReader.getProperty("selenium.hub.url", "http://localhost:4444/wd/hub");
-            URL gridUrl = new URL(hubUrl);
+            URL gridUrl = URI.create(hubUrl).toURL();
             
             return switch (browser.toLowerCase()) {
                 case "chrome" -> {
