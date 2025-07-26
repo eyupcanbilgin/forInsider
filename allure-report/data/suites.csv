@@ -1,0 +1,2 @@
+"Status","Start Time","Stop Time","Duration in ms","Parent Suite","Suite","Sub Suite","Test Class","Test Method","Name","Description"
+"failed","Sun Jun 22 23:04:34 UTC 2025","Sun Jun 22 23:04:34 UTC 2025","532","Default Suite","TestNGTest-6ba63714-5165-448d-af27-9a072c10f858","tests.InsiderCareerFlowTest","tests.InsiderCareerFlowTest","testInsiderCareerJourney","Complete Insider Career Journey - Single End-to-End Scenario","Single comprehensive test covering: Home page → Company>Careers → QA Jobs → Filter → Job Details → Lever Application"

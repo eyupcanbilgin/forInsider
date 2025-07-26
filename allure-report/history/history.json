@@ -1,0 +1,1 @@
+{"28cadab61e1224f72a37da8afa9ae0e5":{"statistic":{"failed":1,"broken":0,"skipped":0,"passed":0,"unknown":0,"total":1},"items":[{"uid":"25bfcb68dc23a4aa","status":"failed","statusDetails":"Assertion failed: Insider ana sayfası başarıyla açılmalı","time":{"start":1750633474061,"stop":1750633474593,"duration":532}}]}}
